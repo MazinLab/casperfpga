@@ -31,7 +31,7 @@ class KatcpRequestFail(RuntimeError):
     """A valid KATCP request failed."""
 
 
-def sendfile(filename, targethost, port, result_queue, timeout=2):
+def sendfile(filename, targethost, port, result_queue, timeout=10):
     """
     Send a file to a host using sockets. Place the result of the
     action in a Queue.Queue
@@ -66,7 +66,7 @@ def sendfile(filename, targethost, port, result_queue, timeout=2):
 
 class KatcpFpga(CasperFpga, katcp.CallbackClient):
 
-    def __init__(self, host, port=7147, timeout=20.0, connect=True):
+    def __init__(self, host, port=7147, timeout=60.0, connect=True):
         """
 
         :param host:
@@ -76,7 +76,7 @@ class KatcpFpga(CasperFpga, katcp.CallbackClient):
         :return:
         """
         katcp.CallbackClient.__init__(self, host, port,
-                                      tb_limit=20, timeout=timeout,
+                                      tb_limit=60, timeout=timeout,
                                       logger=LOGGER, auto_reconnect=True)
         CasperFpga.__init__(self, host)
         self.system_info = {'last_programmed': '',
@@ -399,7 +399,7 @@ class KatcpFpga(CasperFpga, katcp.CallbackClient):
                                      request_args=(version, ),
                                      require_ok=True)
 
-    def upload_to_ram_and_program(self, filename, port=-1, timeout=10,
+    def upload_to_ram_and_program(self, filename, port=-1, timeout=60,
                                   wait_complete=True):
         """
         Upload an FPG file to RAM and then program the FPGA.
@@ -612,11 +612,11 @@ class KatcpFpga(CasperFpga, katcp.CallbackClient):
         LOGGER.debug('%s: reading designinfo' % self.host)
         if device is None:
             reply, informs = self.katcprequest(name='meta',
-                                               request_timeout=10.0,
+                                               request_timeout=60.0,
                                                require_ok=True)
         else:
             reply, informs = self.katcprequest(name='meta',
-                                               request_timeout=10.0,
+                                               request_timeout=60.0,
                                                require_ok=True,
                                                request_args=(device, ))
         if reply.arguments[0] != 'ok':
