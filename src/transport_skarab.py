@@ -775,6 +775,7 @@ class SkarabTransport(Transport):
         self._sdram_programmed = True
         self.prog_info['last_uploaded'] = filename
 
+    #@profile
     def upload_to_ram(self, filename):
         """
         Upload a bitstream to the SKARAB over the wishone --> SDRAM interface
@@ -3580,29 +3581,30 @@ class SkarabTransport(Transport):
             errmsg = "Unrecognised file extension"
             raise InvalidSkarabBitstream(errmsg)
 
-        flash_write_checksum = 0x00
-        size = len(bitstream)
+        # flash_write_checksum = 0x00
+        # size = len(bitstream)
+        #
+        # # Need to scroll through file until there is nothing left to read
+        # for i in range(0, size, 2):
+        #     # This is just getting a substring, need to convert to hex
+        #     two_bytes = bitstream[i:i + 2]
+        #     one_word = struct.unpack('!H', two_bytes)[0]
+        #     flash_write_checksum += one_word
+        #
+        # if (size % packet_size) != 0:
+        #     # padding required
+        #     num_padding_bytes = packet_size - (size % packet_size)
+        #     for i in range(num_padding_bytes / 2):
+        #         flash_write_checksum += 0xffff
+        #
+        # # Last thing to do, make sure it is a 16-bit word
+        # flash_write_checksum &= 0xffff
 
-        # Need to scroll through file until there is nothing left to read
-        for i in range(0, size, 2):
-            # This is just getting a substring, need to convert to hex
-            two_bytes = bitstream[i:i + 2]
-            one_word = struct.unpack('!H', two_bytes)[0]
-            flash_write_checksum += one_word
+        return self.calculate_checksum_using_bitstream(bitstream, packet_size)
 
-        if (size % packet_size) != 0:
-            # padding required
-            num_padding_bytes = packet_size - (size % packet_size)
-            for i in range(num_padding_bytes / 2):
-                flash_write_checksum += 0xffff
-
-        # Last thing to do, make sure it is a 16-bit word
-        flash_write_checksum &= 0xffff
-
-        return flash_write_checksum
-
-    @staticmethod
-    def calculate_checksum_using_bitstream(bitstream, packet_size=8192):
+    #@profile
+    #@staticmethod
+    def calculate_checksum_using_bitstream(self, bitstream, packet_size=8192):
         """
         Summing up all the words in the input bitstream, and returning a
         'Checksum' - Assuming that the bitstream HAS NOT been padded yet
@@ -3612,25 +3614,23 @@ class SkarabTransport(Transport):
         """
 
         size = len(bitstream)
+        byte_list = [struct.unpack('!H', bitstream[i:i+2])[0] for i in range(0, size, 2)]
 
-        flash_write_checksum = 0x00
-
-        for i in range(0, size, 2):
-            # This is just getting a substring, need to convert to hex
-            two_bytes = bitstream[i:i + 2]
-            one_word = struct.unpack('!H', two_bytes)[0]
-            flash_write_checksum += one_word
+        checksum = sum(byte_list)
+        del byte_list[:]
 
         if (size % packet_size) != 0:
             # padding required
             num_padding_bytes = packet_size - (size % packet_size)
-            for i in range(num_padding_bytes / 2):
-                flash_write_checksum += 0xffff
+            checksum += (0xffff * (num_padding_bytes / 2))
+
+            #for i in range(num_padding_bytes / 2):
+            #    checksum += 0xffff
 
         # Last thing to do, make sure it is a 16-bit word
-        flash_write_checksum &= 0xffff
+        checksum &= 0xffff
 
-        return flash_write_checksum
+        return checksum
 
     def get_spartan_checksum(self):
         """
